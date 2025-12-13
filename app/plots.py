@@ -11,5 +11,9 @@ def render_plots(df):
     st.plotly_chart(fig1, use_container_width=True)
 
     # Monthly Saving
-    fig2 = px.bar(df, x="month", y="saving", title="Monthly Saving (Salary - Expense)")
+    fig2 = px.bar(df, x="month", y="saving", title="Monthly Saving")
     st.plotly_chart(fig2, use_container_width=True)
+    
+    # Total Asset Over Time
+    fig3 = px.bar(df, x="month", y="total_asset", title="Total Asset Over Time")
+    st.plotly_chart(fig3, use_container_width=True)

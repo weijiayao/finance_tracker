@@ -48,3 +48,21 @@ def render_editor(records_df: pd.DataFrame):
 
     # Return the sanitized edited dataframe and two boolean flags.
     return edited, save, reset
+
+
+def initial_asset_config(records_df: pd.DataFrame, default_amount: float = 0.0):
+    """Render sidebar controls to configure an initial asset value and the month it applies to.
+
+    Returns:
+        (initial_amount: float, initial_month: datetime)
+    """
+    # Build a list of month labels from the records so the user can pick a month.
+    months = records_df["month"].dt.to_period("M").astype(str).tolist()
+    # Default to the first month in the table
+    default_idx = 0
+    selected_label = st.sidebar.selectbox("Initial asset month", months, index=default_idx)
+    initial_amount = st.sidebar.number_input("Initial asset amount", value=float(default_amount), step=100.0)
+
+    # Convert the selected label (YYYY-MM) back to a Timestamp at first day of month
+    initial_month = pd.to_datetime(selected_label + "-01")
+    return float(initial_amount), initial_month
