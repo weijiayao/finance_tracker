@@ -17,3 +17,10 @@ def render_plots(df):
     # Total Asset Over Time
     fig3 = px.bar(df, x="month", y="total_asset", title="Total Asset Over Time")
     st.plotly_chart(fig3, use_container_width=True)
+
+def render_forecast(forecast_df):
+    st.header("Forecasted Total Assets (Estimated)")
+    st.dataframe(forecast_df)
+    if "total_asset" in forecast_df.columns:
+        fig = px.line(forecast_df, x="month", y="total_asset", markers=True, title="Forecasted Total Asset (Jan-Dec)")
+        st.plotly_chart(fig, use_container_width=True)

@@ -66,3 +66,19 @@ def initial_asset_config(records_df: pd.DataFrame, default_amount: float = 0.0):
     # Convert the selected label (YYYY-MM) back to a Timestamp at first day of month
     initial_month = pd.to_datetime(selected_label + "-01")
     return float(initial_amount), initial_month
+
+
+def forecast_settings(default_salary: float = 0.0, default_expense: float = 0.0, default_initial: float = 0.0, default_rate: float = 3.0):
+    """Render sidebar controls for forecasting assets.
+
+    Returns:
+        (monthly_salary: float, monthly_expense: float, initial_asset: float,
+         annual_rate_percent: float, use_recorded: bool)
+    """
+    st.sidebar.subheader("Forecast Settings")
+    monthly_salary = st.sidebar.number_input("Forecast monthly salary", value=float(default_salary), step=100.0)
+    monthly_expense = st.sidebar.number_input("Forecast monthly expense", value=float(default_expense), step=100.0)
+    initial_asset = st.sidebar.number_input("Initial asset (start of year)", value=float(default_initial), step=100.0)
+    annual_rate = st.sidebar.number_input("Average annual increase rate (%)", value=float(default_rate), step=0.1)
+    # Forecast uses the manual settings above; recorded values are treated separately.
+    return float(monthly_salary), float(monthly_expense), float(initial_asset), float(annual_rate)
