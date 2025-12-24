@@ -7,7 +7,7 @@ def year_input(default_year: int) -> int:
     return st.sidebar.number_input("Year", min_value=2000, max_value=2100, value=default_year, step=1)
 
 
-def render_editor(records_df: pd.DataFrame):
+def user_input_table(records_df: pd.DataFrame):
     st.header("1. Edit Monthly Earnings & Expenses")
     st.markdown("Edit the `salary` and `expense` values for each month directly in the table below.")
     # Render editable table using Streamlit's data editor.
@@ -48,7 +48,6 @@ def render_editor(records_df: pd.DataFrame):
 
     # Return the sanitized edited dataframe and two boolean flags.
     return edited, save, reset
-
 
 def initial_asset_config(records_df: pd.DataFrame, default_amount: float = 0.0):
     """Render sidebar controls to configure an initial asset value and the month it applies to.

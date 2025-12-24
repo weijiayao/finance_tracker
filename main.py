@@ -16,7 +16,7 @@ data.init_session_state(year)
 
 # Editor UI
 records_df = data.get_records_df()
-edited, save, reset = ui.render_editor(records_df)
+edited, save, reset = ui.user_input_table(records_df)
 
 # Initial asset configuration (amount + month)
 initial_asset_amount, initial_asset_month = ui.initial_asset_config(records_df, default_amount=0.0)
@@ -100,21 +100,23 @@ if not df.empty:
             asset = asset * (1.0 + rate_monthly) + float(contribs[i])
             assets[i] = asset
 
-    forecast_df = pd.DataFrame({"month": months, "contribution": contribs, "total_asset": assets})
+    # Add forecast columns directly into `df` (no intermediate DataFrame).
+    fc_contrib = []
+    fc_total = []
+    for m in df["month"]:
+        try:
+            idx = months.index(m)
+            fc_contrib.append(contribs[idx])
+            fc_total.append(assets[idx])
+        except ValueError:
+            fc_contrib.append(None)
+            fc_total.append(None)
 
-    # Merge forecast columns into the year-to-date dataframe so the UI shows
-    # actuals and forecast side-by-side. Forecast columns are prefixed with
-    # `fc_` to avoid name collisions.
-    fc_subset = forecast_df[["month", "contribution", "total_asset"]].rename(
-        columns={"contribution": "fc_contribution", "total_asset": "fc_total_asset"}
-    )
+    df["fc_contribution"] = fc_contrib
+    df["fc_total_asset"] = fc_total
 
-    # Ensure month types match and perform a left merge so months present in
-    # `df` retain their rows and receive forecast columns when available.
-    merged_df = pd.merge(df, fc_subset, on="month", how="left")
-
-    # Render combined plots and table
-    plots.render_plots(merged_df)
+    # Render combined plots and table using the updated `df`.
+    plots.render_plots(df)
 else:
     st.info("No data yet. Edit the table above to add monthly values.")
 
