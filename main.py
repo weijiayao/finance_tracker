@@ -59,16 +59,18 @@ if not df.empty:
         df.loc[df.index >= start_idx, "total_asset"] = (
             initial_asset_amount + cum_from_initial[df.index >= start_idx]
         )
-
-    plots.render_plots(df)
     # --- Forecasting ---
     # Get forecast settings from the sidebar
     (
         fc_monthly_salary,
         fc_monthly_expense,
-        fc_initial_asset,
         fc_annual_rate_percent,
-    ) = ui.forecast_settings(default_salary=0.0, default_expense=0.0, default_initial=0.0, default_rate=3.0)
+    ) = ui.forecast_settings(default_salary=0.0, default_expense=0.0, default_rate=3.0)
+
+    # Use the same initial asset amount selected in the main UI so forecast
+    # and actuals share the same starting asset configuration.
+    # `initial_asset_amount` comes from `ui.initial_asset_config` above.
+    fc_initial_asset = float(initial_asset_amount)
 
     # Build month list for the selected year (Jan-Dec)
     from datetime import datetime
@@ -79,17 +81,40 @@ if not df.empty:
     contribs = [contrib] * 12
 
     # Compute forecasted total asset month-by-month with monthly compounding
-    rate_monthly = float(fc_annual_rate_percent) / 100.0 / 12.0
-    assets = []
-    asset = float(fc_initial_asset)
-    for c in contribs:
-        asset = asset * (1.0 + rate_monthly) + float(c)
-        assets.append(asset)
+    # Convert annual percent to decimal, then compute monthly rate
+    # from the 12th root: (1 + annual_rate)^(1/12) - 1
+    annual_rate = float(fc_annual_rate_percent) / 100.0
+    rate_monthly = (1.0 + annual_rate) ** (1.0 / 12.0) - 1.0
 
+    # Align forecast start to the selected `initial_asset_month` so forecasts
+    # and recorded `total_asset` use the same initial asset anchor.
     import pandas as pd
 
+    assets = [None] * 12
+    # find index in months list where month >= initial_asset_month
+    start_idx = next((i for i, m in enumerate(months) if m >= initial_asset_month), None)
+    if start_idx is not None:
+        asset = float(fc_initial_asset)
+        # fill forecast values from start_idx onward
+        for i in range(start_idx, 12):
+            asset = asset * (1.0 + rate_monthly) + float(contribs[i])
+            assets[i] = asset
+
     forecast_df = pd.DataFrame({"month": months, "contribution": contribs, "total_asset": assets})
-    plots.render_forecast(forecast_df)
+
+    # Merge forecast columns into the year-to-date dataframe so the UI shows
+    # actuals and forecast side-by-side. Forecast columns are prefixed with
+    # `fc_` to avoid name collisions.
+    fc_subset = forecast_df[["month", "contribution", "total_asset"]].rename(
+        columns={"contribution": "fc_contribution", "total_asset": "fc_total_asset"}
+    )
+
+    # Ensure month types match and perform a left merge so months present in
+    # `df` retain their rows and receive forecast columns when available.
+    merged_df = pd.merge(df, fc_subset, on="month", how="left")
+
+    # Render combined plots and table
+    plots.render_plots(merged_df)
 else:
     st.info("No data yet. Edit the table above to add monthly values.")
 
