@@ -67,15 +67,37 @@ def initial_asset_config(records_df: pd.DataFrame, default_amount: float = 0.0):
     return float(initial_amount), initial_month
 
 
-def forecast_settings(default_salary: float = 0.0, default_expense: float = 0.0, default_rate: float = 3.0):
-    """Render sidebar controls for forecasting assets.
+def forecast_settings(
+    default_initial_asset: float = 0.0,
+    default_salary: float = 0.0,
+    default_rate: float = 3.0,
+):
+    """Render sidebar controls for planned-finance settings.
 
     Returns:
-        (monthly_salary: float, monthly_expense: float, annual_rate_percent: float)
+        (initial_asset_amount: float, initial_month: datetime,
+         target_asset_value: float, target_month: datetime,
+         monthly_salary: float, annual_rate_percent: float, generate_plan: bool)
     """
-    st.sidebar.subheader("Forecast Settings")
-    monthly_salary = st.sidebar.number_input("Forecast monthly salary", value=float(default_salary), step=100.0)
-    monthly_expense = st.sidebar.number_input("Forecast monthly expense", value=float(default_expense), step=100.0)
+    st.sidebar.subheader("Planned Finance Settings")
+    initial_asset_amount = st.sidebar.number_input("Initial asset amount", value=float(default_initial_asset), step=100.0)
+    initial_month_date = st.sidebar.date_input("Initial month (pick any day in month)")
+    target_asset_value = st.sidebar.number_input("Target asset value", value=0.0, step=100.0)
+    target_month_date = st.sidebar.date_input("Target month (pick any day in month)")
+    monthly_salary = st.sidebar.number_input("Monthly salary", value=float(default_salary), step=100.0)
     annual_rate = st.sidebar.number_input("Average annual increase rate (%)", value=float(default_rate), step=0.1)
-    # Forecast uses the manual settings above; recorded values are treated separately.
-    return float(monthly_salary), float(monthly_expense), float(annual_rate)
+    generate = st.sidebar.button("Generate Plan")
+
+    # Normalize to first day of month
+    initial_month = pd.to_datetime(initial_month_date).replace(day=1)
+    target_month = pd.to_datetime(target_month_date).replace(day=1)
+
+    return (
+        float(initial_asset_amount),
+        initial_month.to_pydatetime(),
+        float(target_asset_value),
+        target_month.to_pydatetime(),
+        float(monthly_salary),
+        float(annual_rate),
+        bool(generate),
+    )
