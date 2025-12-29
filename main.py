@@ -177,15 +177,7 @@ def finance_plot(df: pd.DataFrame):
 
 # --- Main execution: read sidebar inputs, render real UI, build plan, merge and plot ---
 # Read planned finance inputs from sidebar
-(
-    initial_asset_amount,
-    initial_asset_month,
-    target_asset_value,
-    target_time,
-    current_monthly_salary,
-    fc_annual_rate_percent,
-    generate_plan,
-) = ui.forecast_settings(default_initial_asset=0.0, default_salary=0.0, default_rate=3.0)
+(initial_asset_amount, initial_asset_month, target_asset_value, target_time, current_monthly_salary, fc_annual_rate_percent, generate_plan,) = ui.forecast_settings()
 
 # Persist plan inputs so they survive reruns triggered by editing the table.
 if generate_plan:

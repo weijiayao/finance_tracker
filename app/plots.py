@@ -3,7 +3,6 @@ import streamlit as st
 import pandas as pd
 from app import data
 from datetime import datetime
-from app import data
 
 
 def render_plots(df):
@@ -46,20 +45,38 @@ def render_plots(df):
             rec["month"] = pd.to_datetime(rec["month"]).dt.to_period("M").dt.to_timestamp()
             data.save_records_df(rec)
             st.success("Table saved to session state.")
+            # Rerun immediately so computed fields (saving_real, total_asset_real)
+            # are recomputed and displayed in the updated table.
+            try:
+                st.experimental_rerun()
+            except Exception:
+                # Fallback for Streamlit versions without experimental_rerun
+                try:
+                    from streamlit.runtime.scriptrunner import RerunException
+
+                    raise RerunException("rerun")
+                except Exception:
+                    # Last resort: set a session flag so the page reflects change
+                    st.session_state["records_updated"] = True
     with col2:
         if st.button("Reset Table"):
             year = st.session_state.get("year_selected", datetime.today().year)
             data.reset_records_df(year)
             st.success("Table reset for selected year.")
+            try:
+                st.experimental_rerun()
+            except Exception:
+                try:
+                    from streamlit.runtime.scriptrunner import RerunException
+
+                    raise RerunException("rerun")
+                except Exception:
+                    st.session_state["records_updated"] = True
 
     st.markdown("---")
 
-    # Salary vs Expense (+ asset_change, cash_transfer). Use suffixed names
-    # so planned and real series are distinct.
-    base_series = [s for s in ["salary_real", "expense_real", "asset_change_real", "cash_transfer_real"] if s in df.columns]
-    # include real and planned total asset if present
-    asset_series = [s for s in ["total_asset_real", "total_asset_plan"] if s in df.columns]
-    plot_series = base_series + asset_series
+    # Only plot total asset series (planned vs real) as requested.
+    plot_series = [s for s in ["total_asset_real", "total_asset_plan"] if s in df.columns]
 
     # Ensure plotted columns are numeric and `month` is datetime so Plotly
     # Express can handle wide-form data without mixed-type errors.
@@ -73,7 +90,7 @@ def render_plots(df):
         x="month",
         y=plot_series,
         markers=True,
-        title="Salary, Expense, asset_change (YTD) + Actual/Forecast Asset",
+        title="Total Asset: Real vs Planned",
     )
     # If planned/forecasted asset exists, limit x-axis to the span where
     # either actual `total_asset` or planned `fc_total_asset` are present.
