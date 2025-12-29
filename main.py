@@ -5,6 +5,20 @@ from typing import Optional
 
 from app import data, ui, plots, finance_plan
 
+# Columns that user is allowed to edit
+REAL_EDITABLE_COLS = [
+    "salary_real",
+    "expense_real",
+]
+
+REAL_COLS = [
+    "salary_real",
+    "expense_real",
+    "saving_real",
+    "total_asset_real",
+]
+
+
 
 st.set_page_config(layout="wide")
 st.title("Simple Monthly Finance Tracker")
@@ -173,6 +187,70 @@ def finance_plot(df: pd.DataFrame):
     """Plot the combined dataframe using existing plotting utilities."""
     plots.render_plots(df)
 
+# update whole_df with the new plan_df
+def update_whole_df(plan_df: pd.DataFrame):
+    """Initialize whole_df in session_state once."""
+    if plan_df.empty:
+        return
+
+    whole_df = plan_df.copy()
+
+    # Initialize real finance columns ONCE
+    whole_df["salary_real"] = pd.NA
+    whole_df["expense_real"] = pd.NA
+    whole_df["saving_real"] = pd.NA
+    whole_df["total_asset_real"] = pd.NA
+
+    # initialize all REAL_COLS to 0.0
+    for col in REAL_COLS:
+        whole_df[col] = 0.0
+
+    st.session_state["whole_df"] = whole_df
+
+def render_real_finance_editor(
+    whole_df: pd.DataFrame,
+    initial_asset_amount: float,
+):
+    st.subheader("Update Real Finance")
+
+    editable_cols = {"salary_real", "expense_real"}
+    
+    edited_df = st.data_editor(
+        whole_df,
+        use_container_width=True,
+        num_rows="fixed",
+        disabled=[
+            c for c in whole_df.columns if c not in editable_cols
+        ],
+        key="real_finance_editor",
+    )
+
+    if st.button("Update table"):
+        updated_df = apply_real_finance_update(
+            edited_df,
+            initial_asset_amount,
+        )
+        st.session_state["whole_df"] = updated_df
+        st.success("Table updated!")  # Optional feedback
+        # rerun the app to reflect changes
+        st.rerun()
+
+def apply_real_finance_update(
+    df: pd.DataFrame,
+    initial_asset_amount: float,
+) -> pd.DataFrame:
+    updated = df.copy()
+
+    # Monthly saving
+    updated["saving_real"] = updated["salary_real"] - updated["expense_real"]
+
+
+    # Accumulated asset
+    updated["total_asset_real"] = (
+        initial_asset_amount + updated["saving_real"].cumsum()
+    )
+
+    return updated
 
 
 # --- Main execution: read sidebar inputs, render real UI, build plan, merge and plot ---
@@ -200,7 +278,6 @@ else:
         target_time = ps["target_time"].to_pydatetime() if hasattr(ps["target_time"], "to_pydatetime") else ps["target_time"]
         current_monthly_salary = ps["current_monthly_salary"]
         fc_annual_rate_percent = ps["fc_annual_rate_percent"]
-        generate_plan = True
 
 # Initialize session state grouped by the initial month year (no separate year selector)
 data.init_session_state(initial_asset_month.year)
@@ -228,17 +305,16 @@ if generate_plan:
                 annual_return_rate_percent=fc_annual_rate_percent,
                 generate=generate_plan,
             )
+            update_whole_df(plan_df)
+            
     except Exception as e:
         st.error(f"Failed to generate plan: {e}")
         plan_df = pd.DataFrame()
+        
+    
+if "whole_df" in st.session_state:
+    render_real_finance_editor(
+        st.session_state["whole_df"],
+        initial_asset_amount=float(initial_asset_amount),
+    )
 
-# Merge real finance into the plan DataFrame by aligning months
-merged_df = merge_real_into_plan(plan_df, data.get_records_df().copy(), initial_asset_month, float(initial_asset_amount))
-
-if not merged_df.empty:
-    finance_plot(merged_df)
-else:
-    st.info("No data yet. Edit the table above to add monthly values.")
-
-st.markdown("---")
-st.caption("Tip: Use the year selector in the sidebar to switch years. Next steps: add goal planning and budget suggestions.")
