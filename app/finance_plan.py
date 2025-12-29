@@ -98,9 +98,9 @@ def generate_plan_projection(
 
         rows.append({
             "month": month.to_pydatetime(),
-            "fc_total_asset": asset,
-            "monthly_saving": float(monthly_saving),
-            "cumulative_saving": cumulative,
+            "total_asset_plan": asset,
+            "monthly_saving_plan": float(monthly_saving),
+            "cumulative_saving_plan": cumulative,
         })
 
     df = pd.DataFrame(rows)

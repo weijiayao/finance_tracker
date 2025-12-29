@@ -5,6 +5,9 @@ from typing import Optional
 
 from app import data, ui, plots, finance_plan
 
+import altair as alt
+import streamlit as st
+
 # Columns that user is allowed to edit
 REAL_EDITABLE_COLS = [
     "salary_real",
@@ -39,7 +42,7 @@ def generate_planned_finance(
     If `generate` is False, returns an empty DataFrame.
     """
     if not generate:
-        return pd.DataFrame(columns=["month", "fc_total_asset", "monthly_saving", "cumulative_saving", "suggested_expense"]) 
+        return pd.DataFrame(columns=["month", "total_asset_plan", "monthly_saving_plan", "cumulative_saving_plan", "suggested_expense_plan"]) 
 
     # Calculate required monthly saving and suggested expense
     pmt, suggested_expense = finance_plan.calculate_monthly_saving(
@@ -63,13 +66,6 @@ def generate_planned_finance(
     if not plan_df.empty:
         plan_df = plan_df.copy()
         plan_df["suggested_expense"] = float(suggested_expense)
-        plan_df = plan_df.rename(columns={
-            "fc_total_asset": "total_asset_plan",
-            "monthly_saving": "monthly_saving_plan",
-            "cumulative_saving": "cumulative_saving_plan",
-            "suggested_expense": "suggested_expense_plan",
-        })
-
     return plan_df
 
 
@@ -208,19 +204,30 @@ def update_whole_df(plan_df: pd.DataFrame):
     st.session_state["whole_df"] = whole_df
 
 def render_real_finance_editor(
-    whole_df: pd.DataFrame,
+    df: pd.DataFrame,
     initial_asset_amount: float,
 ):
     st.subheader("Update Real Finance")
 
+    visible_cols = [
+    "month",
+    "total_asset_plan",
+    "cumulative_saving_plan",
+    "total_asset_real",
+    "salary_real",
+    "expense_real",
+    "saving_real",
+    ]
+    display_df = df[visible_cols]
+    
     editable_cols = {"salary_real", "expense_real"}
     
     edited_df = st.data_editor(
-        whole_df,
+        display_df,
         use_container_width=True,
         num_rows="fixed",
         disabled=[
-            c for c in whole_df.columns if c not in editable_cols
+            c for c in display_df.columns if c not in editable_cols
         ],
         key="real_finance_editor",
     )
@@ -230,7 +237,11 @@ def render_real_finance_editor(
             edited_df,
             initial_asset_amount,
         )
-        st.session_state["whole_df"] = updated_df
+        # Patch only editable columns back
+        whole_df = df.copy()
+        for col in updated_df:
+            whole_df[col] = updated_df[col]
+        st.session_state["whole_df"] = whole_df
         st.success("Table updated!")  # Optional feedback
         # rerun the app to reflect changes
         st.rerun()
@@ -317,4 +328,26 @@ if "whole_df" in st.session_state:
         st.session_state["whole_df"],
         initial_asset_amount=float(initial_asset_amount),
     )
+
+
+    df = st.session_state["whole_df"]
+
+    chart = (
+        alt.Chart(df)
+        .mark_line(point=True)
+        .encode(
+            x=alt.X("month:T", title="Month"),
+            y=alt.Y("value:Q", title="Total Asset"),
+            color=alt.Color("type:N", title=""),
+            tooltip=["month:T", "value:Q", "type:N"]
+        )
+        .transform_fold(
+            ["total_asset_real", "total_asset_plan"],
+            as_=["type", "value"]
+        )
+    )
+
+    st.altair_chart(chart, use_container_width=True)
+
+
 
