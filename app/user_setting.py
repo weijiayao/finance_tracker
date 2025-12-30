@@ -60,3 +60,71 @@ def user_settings():
         float(annual_rate),
         bool(generate),
     )
+
+
+def read_user_setting():
+    (initial_asset_amount, 
+    initial_asset_month, 
+    target_asset_value, 
+    target_time, 
+    current_monthly_salary, 
+    fc_annual_rate_percent, 
+    generate_plan,) = user_settings()
+    
+    # initialize "plan_settings"
+    if "plan_settings" not in st.session_state:
+        st.session_state["plan_settings"] = {
+            "initial_asset_amount": float(initial_asset_amount),
+            "initial_asset_month": pd.to_datetime(initial_asset_month),
+            "target_asset_value": float(target_asset_value),
+            "target_time": pd.to_datetime(target_time),
+            "current_monthly_salary": float(current_monthly_salary),
+            "fc_annual_rate_percent": float(fc_annual_rate_percent),
+        }
+    
+    # plan settings update
+    if generate_plan:
+        st.session_state["plan_settings"] = {
+            "initial_asset_amount": float(initial_asset_amount),
+            "initial_asset_month": pd.to_datetime(initial_asset_month),
+            "target_asset_value": float(target_asset_value),
+            "target_time": pd.to_datetime(target_time),
+            "current_monthly_salary": float(current_monthly_salary),
+            "fc_annual_rate_percent": float(fc_annual_rate_percent),
+        }
+        
+    return generate_plan
+        
+
+def get_user_setting_initial_asset():
+        if "plan_settings" in st.session_state:
+            ps = st.session_state["plan_settings"]
+            return ps["initial_asset_amount"]
+
+def get_user_setting_initial_month():
+        if "plan_settings" in st.session_state:
+            ps = st.session_state["plan_settings"]
+            return ps["initial_asset_month"].to_pydatetime() if hasattr(ps["initial_asset_month"], "to_pydatetime") else ps["initial_asset_month"]
+        
+def get_user_setting_target_asset_value():
+        if "plan_settings" in st.session_state:
+            ps = st.session_state["plan_settings"]
+            return ps["target_asset_value"]
+
+def get_user_setting_target_time():
+        if "plan_settings" in st.session_state:
+            ps = st.session_state["plan_settings"]
+            return ps["target_time"].to_pydatetime() if hasattr(ps["target_time"], "to_pydatetime") else ps["target_time"]
+def get_user_setting_current_monthly_salary():
+        if "plan_settings" in st.session_state:
+            ps = st.session_state["plan_settings"]
+            return ps["current_monthly_salary"]
+
+def get_user_setting_fc_annual_rate_percent():
+        if "plan_settings" in st.session_state:
+            ps = st.session_state["plan_settings"]
+            return ps["fc_annual_rate_percent"]
+        
+    
+    
+    

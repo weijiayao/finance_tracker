@@ -37,8 +37,8 @@ EDITABLE_COLS = ["total_asset", "earned_income", "expense"]
 st.set_page_config(layout="wide")
 st.title("Family Finance Tracker")
 
-# update whole_df with the new plan_df
-def update_whole_df(plan_df: pd.DataFrame):
+# init whole dataframe
+def init_whole_df(plan_df: pd.DataFrame):
     """Initialize whole_df in session_state once."""
     if plan_df.empty:
         return
@@ -125,69 +125,47 @@ def apply_real_finance_update(
 
     return updated
 
-
-# --- Main execution: read sidebar inputs, render real UI, build plan, merge and plot ---
-# Read planned finance inputs from sidebar
-(initial_asset_amount, initial_asset_month, target_asset_value, target_time, current_monthly_salary, fc_annual_rate_percent, generate_plan,) = user_setting.user_settings()
-
-# Persist plan inputs so they survive reruns triggered by editing the table.
-if generate_plan:
-    st.session_state["plan_settings"] = {
-        "initial_asset_amount": float(initial_asset_amount),
-        "initial_asset_month": pd.to_datetime(initial_asset_month),
-        "target_asset_value": float(target_asset_value),
-        "target_time": pd.to_datetime(target_time),
-        "current_monthly_salary": float(current_monthly_salary),
-        "fc_annual_rate_percent": float(fc_annual_rate_percent),
-    }
-else:
-    # If a plan has been generated previously and user interacts (e.g., edits table),
-    # reuse the saved plan settings so the planned columns persist.
-    if "plan_settings" in st.session_state:
-        ps = st.session_state["plan_settings"]
-        initial_asset_amount = ps["initial_asset_amount"]
-        initial_asset_month = ps["initial_asset_month"].to_pydatetime() if hasattr(ps["initial_asset_month"], "to_pydatetime") else ps["initial_asset_month"]
-        target_asset_value = ps["target_asset_value"]
-        target_time = ps["target_time"].to_pydatetime() if hasattr(ps["target_time"], "to_pydatetime") else ps["target_time"]
-        current_monthly_salary = ps["current_monthly_salary"]
-        fc_annual_rate_percent = ps["fc_annual_rate_percent"]
-
-# Build the planned finance DataFrame
-# Validate initial/target months before generating plan
-plan_df = pd.DataFrame()
-if generate_plan:
+def generate_finance_plan():
+    plan_df = pd.DataFrame()
     try:
-        init_ts = pd.to_datetime(initial_asset_month)
-        tgt_ts = pd.to_datetime(target_time)
+        init_ts = pd.to_datetime(user_setting.get_user_setting_initial_month())
+        tgt_ts = pd.to_datetime(user_setting.get_user_setting_target_time())
         months_diff = (tgt_ts.year - init_ts.year) * 12 + (tgt_ts.month - init_ts.month)
         if months_diff <= 0:
             st.error("Target month must be after initial month (at least one month later).")
-            generate_plan = False
         else:
             plan_df = finance_plan.generate_planned_finance(
-                current_monthly_salary=current_monthly_salary,
-                initial_asset=float(initial_asset_amount),
-                initial_time=initial_asset_month,
-                target_asset_value=target_asset_value,
-                target_time=target_time,
-                annual_return_rate_percent=fc_annual_rate_percent,
-                generate=generate_plan,
+                current_monthly_salary=user_setting.get_user_setting_current_monthly_salary(),
+                initial_asset=float(user_setting.get_user_setting_initial_asset()),
+                initial_time=user_setting.get_user_setting_initial_month(),
+                target_asset_value=user_setting.get_user_setting_target_asset_value(),
+                target_time=user_setting.get_user_setting_target_time(),
+                annual_return_rate_percent=user_setting.get_user_setting_fc_annual_rate_percent(),
+                generate=True,
             )
-            update_whole_df(plan_df)
             
     except Exception as e:
         st.error(f"Failed to generate plan: {e}")
         plan_df = pd.DataFrame()
         
-    
+    return plan_df
+
+# --- Main execution ---
+# Read user settings
+generate_plan = user_setting.read_user_setting()
+
+# build finance plan dataframe
+if generate_plan:
+    plan_df = generate_finance_plan()
+    # initialize whole dataframe if finance plan changed
+    init_whole_df(plan_df)
+
+# update data from table upon save behavior, and plot it
 if "whole_df" in st.session_state:
     render_real_finance_editor(
         st.session_state["whole_df"],
-        initial_asset_amount=float(initial_asset_amount),
+        initial_asset_amount=float(user_setting.get_user_setting_initial_asset()),
     )
-    
-    df = st.session_state["whole_df"]
-
-    plots.plot_total_asset(df)
+    plots.plot_total_asset(st.session_state["whole_df"])
 
 
