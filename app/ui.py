@@ -87,9 +87,9 @@ def forecast_settings():
 
     # Defaults requested by user
     default_initial_asset = 3000.0
-    default_initial_month = pd.to_datetime("2025-12-01")
+    default_initial_month = pd.to_datetime("2025-10-01")
     default_target_asset = 50000.0
-    default_target_month = pd.to_datetime("2028-12-01")
+    default_target_month = pd.to_datetime("2027-12-01")
     default_monthly_salary = 10000.0
     default_rate = 8.0
 
