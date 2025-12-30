@@ -106,5 +106,44 @@ def generate_plan_projection(
     df = pd.DataFrame(rows)
     return df
 
+def generate_planned_finance(
+    current_monthly_salary: float,
+    initial_asset: float,
+    initial_time: datetime,
+    target_asset_value: float,
+    target_time: datetime,
+    annual_return_rate_percent: float,
+    generate: bool,
+) -> pd.DataFrame:
+    """Return a DataFrame with planned monthly projection from initial_time to target_time.
 
-__all__ = ["calculate_monthly_saving", "generate_plan_projection"]
+    Columns: `month`, `fc_total_asset`, `monthly_saving`, `cumulative_saving`, `suggested_expense`.
+    If `generate` is False, returns an empty DataFrame.
+    """
+    if not generate:
+        return pd.DataFrame(columns=["month", "total_asset_plan", "monthly_saving_plan", "cumulative_saving_plan", "suggested_expense_plan"]) 
+
+    # Calculate required monthly saving and suggested expense
+    pmt, suggested_expense = calculate_monthly_saving(
+        current_monthly_salary=current_monthly_salary,
+        initial_asset=initial_asset,
+        initial_time=initial_time,
+        target_asset_value=target_asset_value,
+        target_time=target_time,
+        annual_return_rate_percent=annual_return_rate_percent,
+    )
+
+    plan_df = generate_plan_projection(
+        initial_asset=initial_asset,
+        initial_time=initial_time,
+        monthly_saving=pmt,
+        target_time=target_time,
+        annual_return_rate_percent=annual_return_rate_percent,
+    )
+
+    # Add suggested_expense as constant column and rename plan columns with suffix
+    if not plan_df.empty:
+        plan_df = plan_df.copy()
+        plan_df["suggested_expense"] = float(suggested_expense)
+    return plan_df
+
