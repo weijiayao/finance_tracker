@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 
-def user_settings():
+def read_inputs():
     """Render sidebar controls for planned-finance settings using month pickers.
 
     Defaults:
@@ -17,7 +17,7 @@ def user_settings():
     Returns:
         (initial_asset_amount: float, initial_month: datetime,
          target_asset_value: float, target_month: datetime,
-         monthly_salary: float, annual_rate_percent: float, generate_plan: bool)
+         monthly_earned_income: float, annual_rate_percent: float, generate_plan: bool)
     """
     st.sidebar.subheader("Planned Finance Settings")
 
@@ -26,7 +26,7 @@ def user_settings():
     default_initial_month = pd.to_datetime("2025-10-01")
     default_target_asset = 50000.0
     default_target_month = pd.to_datetime("2027-12-01")
-    default_monthly_salary = 10000.0
+    default_monthly_earned_income = 10000.0
     default_rate = 8.0
 
     initial_asset_amount = st.sidebar.number_input("Initial asset amount", value=float(default_initial_asset), step=100.0)
@@ -46,7 +46,7 @@ def user_settings():
     target_month = st.sidebar.selectbox("Target month", months, index=target_idx, format_func=fmt)
 
     target_asset_value = st.sidebar.number_input("Target asset value", value=float(default_target_asset), step=100.0)
-    monthly_salary = st.sidebar.number_input("Monthly salary", value=float(default_monthly_salary), step=100.0)
+    monthly_earned_income = st.sidebar.number_input("Monthly salary", value=float(default_monthly_earned_income), step=100.0)
     annual_rate = st.sidebar.number_input("Average annual increase rate (%)", value=float(default_rate), step=0.1)
 
     generate = st.sidebar.button("Generate Plan")
@@ -56,20 +56,20 @@ def user_settings():
         initial_month.to_pydatetime(),
         float(target_asset_value),
         target_month.to_pydatetime(),
-        float(monthly_salary),
+        float(monthly_earned_income),
         float(annual_rate),
         bool(generate),
     )
 
 
-def read_user_setting():
+def read_user_inputs():
     (initial_asset_amount, 
     initial_asset_month, 
     target_asset_value, 
     target_time, 
-    current_monthly_salary, 
+    current_monthly_earned_income, 
     fc_annual_rate_percent, 
-    generate_plan,) = user_settings()
+    generate_plan,) = read_inputs()
     
     # initialize "plan_settings"
     if "plan_settings" not in st.session_state:
@@ -78,7 +78,7 @@ def read_user_setting():
             "initial_asset_month": pd.to_datetime(initial_asset_month),
             "target_asset_value": float(target_asset_value),
             "target_time": pd.to_datetime(target_time),
-            "current_monthly_salary": float(current_monthly_salary),
+            "current_monthly_earned_income": float(current_monthly_earned_income),
             "fc_annual_rate_percent": float(fc_annual_rate_percent),
         }
     
@@ -89,42 +89,51 @@ def read_user_setting():
             "initial_asset_month": pd.to_datetime(initial_asset_month),
             "target_asset_value": float(target_asset_value),
             "target_time": pd.to_datetime(target_time),
-            "current_monthly_salary": float(current_monthly_salary),
+            "current_monthly_earned_income": float(current_monthly_earned_income),
             "fc_annual_rate_percent": float(fc_annual_rate_percent),
         }
         
     return generate_plan
         
 
-def get_user_setting_initial_asset():
+def get_initial_asset():
         if "plan_settings" in st.session_state:
             ps = st.session_state["plan_settings"]
             return ps["initial_asset_amount"]
 
-def get_user_setting_initial_month():
+def get_initial_month():
         if "plan_settings" in st.session_state:
             ps = st.session_state["plan_settings"]
             return ps["initial_asset_month"].to_pydatetime() if hasattr(ps["initial_asset_month"], "to_pydatetime") else ps["initial_asset_month"]
         
-def get_user_setting_target_asset_value():
+def get_target_asset_value():
         if "plan_settings" in st.session_state:
             ps = st.session_state["plan_settings"]
             return ps["target_asset_value"]
 
-def get_user_setting_target_time():
+def get_target_time():
         if "plan_settings" in st.session_state:
             ps = st.session_state["plan_settings"]
             return ps["target_time"].to_pydatetime() if hasattr(ps["target_time"], "to_pydatetime") else ps["target_time"]
-def get_user_setting_current_monthly_salary():
+def get_current_monthly_earned_income():
         if "plan_settings" in st.session_state:
             ps = st.session_state["plan_settings"]
-            return ps["current_monthly_salary"]
+            return ps["current_monthly_earned_income"]
 
-def get_user_setting_fc_annual_rate_percent():
+def get_fc_annual_rate_percent():
         if "plan_settings" in st.session_state:
             ps = st.session_state["plan_settings"]
             return ps["fc_annual_rate_percent"]
         
+def set_suggested_monthly_expense(value: float):
+    """Set suggested monthly expense in session state."""
+    st.session_state["suggested_monthly_expense"] = value
     
-    
-    
+
+def write_outputs():
+    """Render sidebar outputs for planned-finance settings."""
+    if "suggested_monthly_expense" in st.session_state:
+        st.sidebar.metric(
+            label="Suggested monthly expense",
+            value=f"${st.session_state['suggested_monthly_expense']:,.2f}",
+        )

@@ -6,65 +6,68 @@ import pandas as pd
 def _months_between(start: datetime, end: datetime) -> int:
     return (end.year - start.year) * 12 + (end.month - start.month)
 
-
-def calculate_monthly_saving(
-    current_monthly_salary: float,
+def calculate_suggested_monthly_saving(
+    current_monthly_earned_income: float,
     initial_asset: float,
     initial_time: datetime,
     target_asset_value: float,
     target_time: datetime,
     annual_return_rate_percent: float = 5.0,
 ) -> Tuple[float, float]:
-    """Calculate required monthly saving to reach `target_asset_value`.
-
-    Returns a tuple: (monthly_saving, suggested_monthly_expense_budget).
-
-    Calculation assumptions:
-    - Monthly contributions occur at the end of each month.
-    - Investment grows at a fixed monthly rate derived from the annual rate.
-    - If `annual_return_rate_percent` is zero, a simple linear split is used.
-    - If the target is already met, monthly saving is 0.
     """
+    Calculate required monthly saving to reach `target_asset_value`.
+
+    Returns:
+        (suggested_monthly_saving, suggested_monthly_expense_budget)
+    """
+
     months = _months_between(initial_time, target_time)
     if months <= 0:
-        raise ValueError("`target_time` must be after `initial_time` and at least one month later")
+        raise ValueError("`target_time` must be after `initial_time`")
 
-    target = float(target_asset_value)
     A = float(initial_asset)
-    r = float(annual_return_rate_percent) / 100.0
-    m = 12
-    monthly_rate = r / m
+    target = float(target_asset_value)
 
-    # If already at or above target, no saving needed.
+    # error reminder
     if A >= target:
-        return 0.0, max(0.0, float(current_monthly_salary))
+        raise ValueError("Initial asset already meets or exceeds target asset value.")
+    if annual_return_rate_percent < 0:
+        raise ValueError("Annual return rate percent cannot be negative.")
 
-    # Solve future value formula for PMT (end-of-period contributions):
-    # target = A*(1+monthly_rate)**n + PMT * [((1+monthly_rate)**n - 1) / monthly_rate]
+    # Convert annual return to effective monthly rate
+    r_annual = annual_return_rate_percent / 100.0
+    if r_annual == 0:
+        monthly_rate = 0.0
+    else:
+        monthly_rate = (1 + r_annual) ** (1 / 12) - 1
+
     n = months
+
+    # Solve for monthly saving (PMT)
+    # assumed formula: target = A*(1+monthly_rate)**n + suggested_monthly_saving * [((1+monthly_rate)**n - 1) / monthly_rate]
     if monthly_rate == 0:
-        pmt = (target - A) / n
+        # Linear saving, no investment growth
+        suggested_monthly_saving = (target - A) / n
     else:
         factor = (1 + monthly_rate) ** n
         denom = (factor - 1) / monthly_rate
-        pmt = (target - A * factor) / denom
+        suggested_monthly_saving = (target - A * factor) / denom
 
-    # Ensure PMT is not negative
-    pmt = max(0.0, float(pmt))
+    suggested_monthly_saving = max(0.0, float(suggested_monthly_saving))
 
     # Suggested expense budget is what's left from salary after saving
-    suggested_expense = float(current_monthly_salary) - pmt
-    if suggested_expense < 0:
+    suggested_monthly_expense = float(current_monthly_earned_income) - suggested_monthly_saving
+    if suggested_monthly_expense < 0:
         # Not enough salary to cover suggested saving; clamp expense at zero.
-        suggested_expense = 0.0
+        raise ValueError("Current monthly salary is insufficient to meet the saving goal.")
 
-    return pmt, suggested_expense
+    return suggested_monthly_saving, suggested_monthly_expense
 
 
 def generate_plan_projection(
     initial_asset: float,
     initial_time: datetime,
-    monthly_saving: float,
+    suggested_monthly_saving: float,
     target_time: datetime,
     annual_return_rate_percent: float = 5.0,
 ) -> pd.DataFrame:
@@ -73,15 +76,15 @@ def generate_plan_projection(
     The returned DataFrame has columns:
     - `month` (Timestamp first day of month)
     - `fc_total_asset` (planned total asset for that month)
-    - `monthly_saving` (same value each month)
+    - `suggested_monthly_saving` (same value each month)
     - `cumulative_saving` (sum of contributions so far)
     """
     months = _months_between(initial_time, target_time)
     if months <= 0:
         raise ValueError("`target_time` must be after `initial_time` and at least one month later")
 
-    r = float(annual_return_rate_percent) / 100.0
-    monthly_rate = r / 12.0
+    r_annual = float(annual_return_rate_percent) / 100.0
+    monthly_rate = (1 + r_annual) ** (1 / 12) - 1
 
     rows = []
     asset = float(initial_asset)
@@ -93,13 +96,12 @@ def generate_plan_projection(
         # asset grows during month
         asset = asset * (1 + monthly_rate)
         # contribution at end of month
-        asset += float(monthly_saving)
-        cumulative += float(monthly_saving)
+        asset += float(suggested_monthly_saving)
+        cumulative += float(suggested_monthly_saving)
 
         rows.append({
             "month": month.to_pydatetime(),
             "total_asset_plan": asset,
-            "monthly_saving_plan": float(monthly_saving),
             "cumulative_saving_plan": cumulative,
         })
 
@@ -107,7 +109,7 @@ def generate_plan_projection(
     return df
 
 def generate_planned_finance(
-    current_monthly_salary: float,
+    current_monthly_earned_income: float,
     initial_asset: float,
     initial_time: datetime,
     target_asset_value: float,
@@ -117,15 +119,15 @@ def generate_planned_finance(
 ) -> pd.DataFrame:
     """Return a DataFrame with planned monthly projection from initial_time to target_time.
 
-    Columns: `month`, `fc_total_asset`, `monthly_saving`, `cumulative_saving`, `suggested_expense`.
+    Columns: `month`, `fc_total_asset`, `suggested_monthly_saving`, `cumulative_saving`, `suggested_monthly_expense`.
     If `generate` is False, returns an empty DataFrame.
     """
     if not generate:
-        return pd.DataFrame(columns=["month", "total_asset_plan", "monthly_saving_plan", "cumulative_saving_plan", "suggested_expense_plan"]) 
+        return pd.DataFrame(columns=["month", "total_asset_plan", "suggested_monthly_saving_plan", "cumulative_saving_plan", "suggested_monthly_expense_plan"]) 
 
     # Calculate required monthly saving and suggested expense
-    pmt, suggested_expense = calculate_monthly_saving(
-        current_monthly_salary=current_monthly_salary,
+    suggested_monthly_saving, suggested_monthly_expense = calculate_suggested_monthly_saving(
+        current_monthly_earned_income=current_monthly_earned_income,
         initial_asset=initial_asset,
         initial_time=initial_time,
         target_asset_value=target_asset_value,
@@ -136,14 +138,16 @@ def generate_planned_finance(
     plan_df = generate_plan_projection(
         initial_asset=initial_asset,
         initial_time=initial_time,
-        monthly_saving=pmt,
+        suggested_monthly_saving=suggested_monthly_saving,
         target_time=target_time,
         annual_return_rate_percent=annual_return_rate_percent,
     )
 
-    # Add suggested_expense as constant column and rename plan columns with suffix
+    # Add suggested_monthly_expense and suggested_monthly_saving_plan as constant column and rename plan columns with suffix
     if not plan_df.empty:
         plan_df = plan_df.copy()
-        plan_df["suggested_expense"] = float(suggested_expense)
-    return plan_df
+        plan_df["suggested_monthly_expense"] = float(suggested_monthly_expense)
+        plan_df["suggested_suggested_monthly_saving"] = float(suggested_monthly_saving)
+    
+    return plan_df, suggested_monthly_expense
 
