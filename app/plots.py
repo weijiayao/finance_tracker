@@ -47,6 +47,25 @@ def plot_total_asset(df):
 
     st.altair_chart(chart, use_container_width=True)
     
+    # --- Expense Side-by-Side (Grouped) Bar Chart ---
+    expense_chart = (
+        alt.Chart(plot_df)
+        .transform_fold(
+            ["expense", "expense_plan"],  # convert wide → long
+            as_=["type", "value"]
+        )
+        .mark_bar()
+        .encode(
+            x=alt.X("month:T", title="Month"),
+            y=alt.Y("value:Q", title="Monthly Expense"),
+            color=alt.Color("type:N", title=""),
+            xOffset="type:N",  # <--- this makes the bars side by side
+            tooltip=["month:T", "value:Q", "type:N"]
+        )
+    )
+
+    st.altair_chart(expense_chart, use_container_width=True)
+    
 
     
     
