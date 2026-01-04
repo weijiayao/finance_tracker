@@ -111,6 +111,7 @@ def apply_real_finance_update(
 ) -> pd.DataFrame:
     updated = df.copy()
     
+    # total gain = saving + investment gain
     # saving
     updated["saving"] = updated["earned_income"] - updated["expense"]
     updated["cumulative_saving"] = updated["saving"].cumsum()
@@ -128,21 +129,16 @@ def apply_real_finance_update(
 def generate_finance_plan():
     plan_df = pd.DataFrame()
     try:
-        init_ts = pd.to_datetime(user_setting.get_user_setting_initial_month())
-        tgt_ts = pd.to_datetime(user_setting.get_user_setting_target_time())
-        months_diff = (tgt_ts.year - init_ts.year) * 12 + (tgt_ts.month - init_ts.month)
-        if months_diff <= 0:
-            st.error("Target month must be after initial month (at least one month later).")
-        else:
-            plan_df = finance_plan.generate_planned_finance(
-                current_monthly_salary=user_setting.get_user_setting_current_monthly_salary(),
-                initial_asset=float(user_setting.get_user_setting_initial_asset()),
-                initial_time=user_setting.get_user_setting_initial_month(),
-                target_asset_value=user_setting.get_user_setting_target_asset_value(),
-                target_time=user_setting.get_user_setting_target_time(),
-                annual_return_rate_percent=user_setting.get_user_setting_fc_annual_rate_percent(),
-                generate=True,
+        plan_df, suggested_monthly_saving = finance_plan.generate_planned_finance(
+                current_monthly_earned_income=user_setting.get_current_monthly_earned_income(),
+                initial_asset=float(user_setting.get_initial_asset()),
+                initial_time=user_setting.get_initial_month(),
+                target_asset_value=user_setting.get_target_asset_value(),
+                target_time=user_setting.get_target_time(),
+                annual_return_rate_percent=user_setting.get_fc_annual_rate_percent(),
+                annual_income_increase_rate_percent=user_setting.get_annual_income_increase_rate_percent(),
             )
+        user_setting.set_suggested_monthly_saving(suggested_monthly_saving)
             
     except Exception as e:
         st.error(f"Failed to generate plan: {e}")
@@ -151,8 +147,8 @@ def generate_finance_plan():
     return plan_df
 
 # --- Main execution ---
-# Read user settings
-generate_plan = user_setting.read_user_setting()
+# Read sidebar user inputs
+generate_plan = user_setting.read_user_inputs()
 
 # build finance plan dataframe
 if generate_plan:
@@ -160,11 +156,14 @@ if generate_plan:
     # initialize whole dataframe if finance plan changed
     init_whole_df(plan_df)
 
+# Write sidebar outputs
+user_setting.write_outputs()
+
 # update data from table upon save behavior, and plot it
 if "whole_df" in st.session_state:
     render_real_finance_editor(
         st.session_state["whole_df"],
-        initial_asset_amount=float(user_setting.get_user_setting_initial_asset()),
+        initial_asset_amount=float(user_setting.get_initial_asset()),
     )
     plots.plot_total_asset(st.session_state["whole_df"])
 
