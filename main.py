@@ -129,16 +129,16 @@ def apply_real_finance_update(
 def generate_finance_plan():
     plan_df = pd.DataFrame()
     try:
-        plan_df, suggested_monthly_expense = finance_plan.generate_planned_finance(
+        plan_df, suggested_monthly_saving = finance_plan.generate_planned_finance(
                 current_monthly_earned_income=user_setting.get_current_monthly_earned_income(),
                 initial_asset=float(user_setting.get_initial_asset()),
                 initial_time=user_setting.get_initial_month(),
                 target_asset_value=user_setting.get_target_asset_value(),
                 target_time=user_setting.get_target_time(),
                 annual_return_rate_percent=user_setting.get_fc_annual_rate_percent(),
-                generate=True,
+                annual_income_increase_rate_percent=user_setting.get_annual_income_increase_rate_percent(),
             )
-        user_setting.set_suggested_monthly_expense(suggested_monthly_expense)
+        user_setting.set_suggested_monthly_saving(suggested_monthly_saving)
             
     except Exception as e:
         st.error(f"Failed to generate plan: {e}")
